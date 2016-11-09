@@ -9,18 +9,24 @@
 import UIKit
 import SpriteKit
 import GameplayKit
+import ReplayKit
 
-class GameViewController: UIViewController {
+class GameViewController: UIViewController, RPPreviewViewControllerDelegate {
+    
+    // is the user recording gameplay
+    var isRecording = false
 
+    @IBOutlet weak var recordButton: UIButton!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Load 'GameScene.sks' as a GKScene. This provides gameplay related content
+        // Load 'StartScene.sks' as a GKScene. This provides gameplay related content
         // including entities and graphs.
-        if let scene = GKScene(fileNamed: "GameScene") {
+        if let scene = GKScene(fileNamed: "StartScene") {
             
             // Get the SKScene from the loaded GKScene
-            if let sceneNode = scene.rootNode as! GameScene? {
+            if let sceneNode = scene.rootNode as! GameStartScene? {
                 
                 // Copy gameplay related content over to the scene
                 sceneNode.entities = scene.entities
@@ -35,13 +41,57 @@ class GameViewController: UIViewController {
                     
                     view.ignoresSiblingOrder = true
                     
-                    view.showsFPS = true
-                    view.showsNodeCount = true
+                    //view.showsFPS = true
+                    //view.showsNodeCount = true
                 }
             }
         }
     }
 
+    @IBAction func recordButtonPressed(_ sender: UIButton) {
+        isRecording = !isRecording
+        
+        if isRecording {
+            startRecording()
+        } else {
+            stopRecording()
+        }
+    }
+    
+    // start recording gameplay
+    func startRecording() {
+        let recorder = RPScreenRecorder.shared()
+        
+        recorder.startRecording{[unowned self] (error) in
+            if let unwrappedError = error {
+                print(unwrappedError.localizedDescription)
+            } else {
+                let recordingIcon = UIImage(named: "cameraOnIcon")
+                self.recordButton.setImage(recordingIcon, for: UIControlState.normal)
+            }
+        }
+    }
+    
+    // stop recording gameplay
+    func stopRecording() {
+        let recorder = RPScreenRecorder.shared()
+        
+        let offIcon = UIImage(named: "cameraOffIcon")
+        
+        recordButton.setImage(offIcon, for: UIControlState.normal)
+        
+        recorder.stopRecording{[unowned self] (preview, error) in
+            if let unwrappedPreview = preview {
+                unwrappedPreview.previewControllerDelegate = self
+                self.present(unwrappedPreview, animated: true)
+            }
+        }
+    }
+    
+    func previewControllerDidFinish(_ previewController: RPPreviewViewController) {
+        dismiss(animated: true)
+    }
+    
     override var shouldAutorotate: Bool {
         return true
     }
